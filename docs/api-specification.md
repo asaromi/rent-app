@@ -40,7 +40,7 @@ Tokens are issued at login and expire after **24 hours** by default.
   "data": { ... },
   "meta": {
     "page": 1,
-    "perPage": 20,
+    "per_page": 20,
     "total": 100
   }
 }
@@ -156,7 +156,7 @@ GET /auth/me
     "email": "john@example.com",
     "role": "renter",
     "phone": "+62812345678",
-    "createdAt": "2026-04-01T08:00:00Z"
+    "created_at": "2026-04-01T08:00:00Z"
   }
 }
 ```
@@ -178,14 +178,14 @@ GET /units
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `page` | integer | Page number (default: 1) |
-| `perPage` | integer | Items per page (default: 20, max: 100) |
+| `per_page` | integer | Items per page (default: 20, max: 100) |
 | `type` | string | Filter by unit type (apartment, house, room, studio, commercial, other) |
 | `location` | string | Free-text location search |
-| `minPrice` | number | Minimum price per day |
-| `maxPrice` | number | Maximum price per day |
-| `minCapacity` | integer | Minimum required capacity |
-| `startDate` | date | Availability start date filter (YYYY-MM-DD) |
-| `endDate` | date | Availability end date filter (YYYY-MM-DD) |
+| `min_price` | number | Minimum price per day |
+| `max_price` | number | Maximum price per day |
+| `min_capacity` | integer | Minimum required capacity |
+| `start_date` | date | Availability start date filter (YYYY-MM-DD) |
+| `end_date` | date | Availability end date filter (YYYY-MM-DD) |
 
 **Response `200 OK`**
 
@@ -198,15 +198,15 @@ GET /units
       "name": "2BR Apartment in Bandung",
       "type": "apartment",
       "location": "Bandung, West Java",
-      "pricePerDay": 250000,
+      "price_per_day": 250000,
       "capacity": 4,
       "photos": ["https://storage.example.com/photo1.jpg"],
-      "isAvailable": true
+      "is_available": true
     }
   ],
   "meta": {
     "page": 1,
-    "perPage": 20,
+    "per_page": 20,
     "total": 45
   }
 }
@@ -233,11 +233,11 @@ GET /units/:id
     "description": "A cozy 2-bedroom apartment...",
     "type": "apartment",
     "location": "Jl. Sudirman No. 10, Bandung",
-    "pricePerDay": 250000,
+    "price_per_day": 250000,
     "capacity": 4,
     "amenities": {
       "wifi": true,
-      "airConditioning": true,
+      "air_conditioning": true,
       "parking": 1,
       "washer": true
     },
@@ -245,8 +245,8 @@ GET /units/:id
       "https://storage.example.com/photo1.jpg",
       "https://storage.example.com/photo2.jpg"
     ],
-    "isAvailable": true,
-    "createdAt": "2026-01-15T00:00:00Z"
+    "is_available": true,
+    "created_at": "2026-01-15T00:00:00Z"
   }
 }
 ```
@@ -270,15 +270,15 @@ The endpoint accepts three submission modes. The `Authorization` header is optio
 
 ```json
 {
-  "unitId": "uuid",
-  "startDate": "2026-05-01",
-  "endDate": "2026-05-15",
+  "unit_id": "uuid",
+  "start_date": "2026-05-01",
+  "end_date": "2026-05-15",
   "occupants": 2,
   "purpose": "residential",
   "notes": "We are a couple looking for a quiet place.",
-  "guestName": "Jane Smith",
-  "guestEmail": "jane@example.com",
-  "guestPhone": "+62812345678"
+  "guest_name": "Jane Smith",
+  "guest_email": "jane@example.com",
+  "guest_phone": "+62812345678"
 }
 ```
 
@@ -288,15 +288,15 @@ Includes all Mode A fields plus a `password` field. The system creates a new use
 
 ```json
 {
-  "unitId": "uuid",
-  "startDate": "2026-05-01",
-  "endDate": "2026-05-15",
+  "unit_id": "uuid",
+  "start_date": "2026-05-01",
+  "end_date": "2026-05-15",
   "occupants": 2,
   "purpose": "residential",
   "notes": "We are a couple looking for a quiet place.",
-  "guestName": "Jane Smith",
-  "guestEmail": "jane@example.com",
-  "guestPhone": "+62812345678",
+  "guest_name": "Jane Smith",
+  "guest_email": "jane@example.com",
+  "guest_phone": "+62812345678",
   "password": "S3cur3P@ss!"
 }
 ```
@@ -307,9 +307,9 @@ The server auto-fills the submitter identity from the token. Guest fields in the
 
 ```json
 {
-  "unitId": "uuid",
-  "startDate": "2026-05-01",
-  "endDate": "2026-05-15",
+  "unit_id": "uuid",
+  "start_date": "2026-05-01",
+  "end_date": "2026-05-15",
   "occupants": 2,
   "purpose": "residential",
   "notes": "We are a couple looking for a quiet place."
@@ -317,13 +317,13 @@ The server auto-fills the submitter identity from the token. Guest fields in the
 ```
 
 **Validations**
-- `startDate` must be a future date
-- `endDate` must be after `startDate`
+- `start_date` must be a future date
+- `end_date` must be after `start_date`
 - `occupants` must not exceed the unit's `capacity`
-- Unit must be `isAvailable: true`
+- Unit must be `is_available: true`
 - No overlapping approved requests exist for the unit and date range
-- (Mode A/B) `guestName` and `guestEmail` are required when no JWT is present
-- (Mode B) `password` must be at least 8 characters; `guestEmail` must not already belong to an existing account
+- (Mode A/B) `guest_name` and `guest_email` are required when no JWT is present
+- (Mode B) `password` must be at least 8 characters; `guest_email` must not already belong to an existing account
 - (Mode C) JWT must be valid and not expired
 
 **Response `201 Created`**
@@ -333,17 +333,17 @@ The server auto-fills the submitter identity from the token. Guest fields in the
   "success": true,
   "data": {
     "id": "uuid",
-    "unitId": "uuid",
-    "renterId": "uuid-or-null",
-    "guestName": "Jane Smith",
-    "guestEmail": "jane@example.com",
-    "startDate": "2026-05-01",
-    "endDate": "2026-05-15",
+    "unit_id": "uuid",
+    "renter_id": "uuid-or-null",
+    "guest_name": "Jane Smith",
+    "guest_email": "jane@example.com",
+    "start_date": "2026-05-01",
+    "end_date": "2026-05-15",
     "occupants": 2,
     "purpose": "residential",
     "notes": "We are a couple looking for a quiet place.",
     "status": "pending",
-    "createdAt": "2026-04-08T10:00:00Z"
+    "created_at": "2026-04-08T10:00:00Z"
   }
 }
 ```
@@ -372,7 +372,7 @@ Returns only requests belonging to the authenticated user.
 |-----------|------|-------------|
 | `status` | string | Filter by status: pending, approved, rejected, cancelled |
 | `page` | integer | Page number (default: 1) |
-| `perPage` | integer | Items per page (default: 20) |
+| `per_page` | integer | Items per page (default: 20) |
 
 **Response `200 OK`**
 
@@ -386,13 +386,13 @@ Returns only requests belonging to the authenticated user.
         "id": "uuid",
         "name": "2BR Apartment in Bandung"
       },
-      "startDate": "2026-05-01",
-      "endDate": "2026-05-15",
+      "start_date": "2026-05-01",
+      "end_date": "2026-05-15",
       "status": "pending",
-      "createdAt": "2026-04-08T10:00:00Z"
+      "created_at": "2026-04-08T10:00:00Z"
     }
   ],
-  "meta": { "page": 1, "perPage": 20, "total": 3 }
+  "meta": { "page": 1, "per_page": 20, "total": 3 }
 }
 ```
 
@@ -416,14 +416,14 @@ Renters may only access their own requests. Admins may access any.
     "id": "uuid",
     "unit": { "id": "uuid", "name": "2BR Apartment in Bandung", "location": "Bandung" },
     "renter": { "id": "uuid", "name": "John Doe", "email": "john@example.com" },
-    "startDate": "2026-05-01",
-    "endDate": "2026-05-15",
+    "start_date": "2026-05-01",
+    "end_date": "2026-05-15",
     "occupants": 2,
     "purpose": "residential",
     "notes": "We are a couple looking for a quiet place.",
     "status": "pending",
-    "createdAt": "2026-04-08T10:00:00Z",
-    "updatedAt": "2026-04-08T10:00:00Z"
+    "created_at": "2026-04-08T10:00:00Z",
+    "updated_at": "2026-04-08T10:00:00Z"
   }
 }
 ```
@@ -472,12 +472,12 @@ Renters may only access contracts linked to their own requests.
   "success": true,
   "data": {
     "id": "uuid",
-    "requestId": "uuid",
-    "documentUrl": "https://storage.example.com/contracts/contract-uuid.pdf",
-    "signedUrl": null,
+    "request_id": "uuid",
+    "document_url": "https://storage.example.com/contracts/contract-uuid.pdf",
+    "signed_url": null,
     "status": "pending_signature",
-    "expiresAt": "2026-04-15T10:00:00Z",
-    "createdAt": "2026-04-08T10:00:00Z"
+    "expires_at": "2026-04-15T10:00:00Z",
+    "created_at": "2026-04-08T10:00:00Z"
   }
 }
 ```
@@ -509,8 +509,8 @@ Records the renter's acceptance and generates the signed contract PDF.
   "data": {
     "id": "uuid",
     "status": "signed",
-    "signedAt": "2026-04-08T11:30:00Z",
-    "signedUrl": "https://storage.example.com/contracts/contract-uuid-signed.pdf"
+    "signed_at": "2026-04-08T11:30:00Z",
+    "signed_url": "https://storage.example.com/contracts/contract-uuid-signed.pdf"
   }
 }
 ```
@@ -561,10 +561,10 @@ GET /admin/rent-requests
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `status` | string | Filter by status |
-| `unitId` | uuid | Filter by unit |
-| `renterId` | uuid | Filter by renter |
+| `unit_id` | uuid | Filter by unit |
+| `renter_id` | uuid | Filter by renter |
 | `page` | integer | Page number |
-| `perPage` | integer | Items per page |
+| `per_page` | integer | Items per page |
 
 **Response `200 OK`** — same shape as `GET /rent-requests` but includes all users' requests.
 
@@ -587,9 +587,9 @@ PUT /admin/rent-requests/:id/approve
     "request": { "id": "uuid", "status": "approved" },
     "contract": {
       "id": "uuid",
-      "documentUrl": "https://storage.example.com/contracts/contract-uuid.pdf",
+      "document_url": "https://storage.example.com/contracts/contract-uuid.pdf",
       "status": "pending_signature",
-      "expiresAt": "2026-04-15T10:00:00Z"
+      "expires_at": "2026-04-15T10:00:00Z"
     }
   }
 }
@@ -620,7 +620,7 @@ PUT /admin/rent-requests/:id/reject
 ```json
 {
   "success": true,
-  "data": { "id": "uuid", "status": "rejected", "rejectionReason": "Unit is under maintenance during the requested period." }
+  "data": { "id": "uuid", "status": "rejected", "rejection_reason": "Unit is under maintenance during the requested period." }
 }
 ```
 
@@ -655,9 +655,9 @@ POST /admin/units
   "description": "Modern studio apartment...",
   "type": "studio",
   "location": "Jl. Gatot Subroto, Jakarta",
-  "pricePerDay": 300000,
+  "price_per_day": 300000,
   "capacity": 2,
-  "amenities": { "wifi": true, "airConditioning": true },
+  "amenities": { "wifi": true, "air_conditioning": true },
   "photos": ["https://storage.example.com/photo1.jpg"]
 }
 ```
@@ -690,7 +690,7 @@ PUT /admin/units/:id/availability
 **Request Body**
 
 ```json
-{ "isAvailable": false }
+{ "is_available": false }
 ```
 
 **Response `200 OK`**
@@ -698,6 +698,6 @@ PUT /admin/units/:id/availability
 ```json
 {
   "success": true,
-  "data": { "id": "uuid", "isAvailable": false }
+  "data": { "id": "uuid", "is_available": false }
 }
 ```
