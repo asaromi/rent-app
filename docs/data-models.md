@@ -23,18 +23,21 @@
 │     User     │        │   RentRequest    │        │     Unit     │
 ├──────────────┤        ├──────────────────┤        ├──────────────┤
 │ id (PK)      │◄──────►│ id (PK)          │◄──────►│ id (PK)      │
-│ name         │  1   N │ unit_id (FK)     │  N   1 │ name         │
-│ email        │        │ renter_id (FK)   │        │ description  │
-│ password_hash│        │ reviewed_by (FK) │        │ type         │
-│ role         │        │ start_date       │        │ location     │
-│ phone        │        │ end_date         │        │ price_per_day│
-│ created_at   │        │ occupants        │        │ capacity     │
-│ updated_at   │        │ purpose          │        │ amenities    │
-└──────────────┘        │ notes            │        │ photos       │
-                        │ status           │        │ is_available │
-                        │ rejection_reason │        │ created_at   │
-                        │ created_at       │        │ updated_at   │
-                        │ updated_at       │        └──────────────┘
+│ name         │  1  0..N│ unit_id (FK)    │  N   1 │ name         │
+│ email        │        │ renter_id (FK,??)│        │ description  │
+│ password_hash│        │ guest_name (??)  │        │ type         │
+│ role         │        │ guest_email (??) │        │ location     │
+│ phone        │        │ guest_phone (??) │        │ price_per_day│
+│ created_at   │        │ reviewed_by (FK) │        │ capacity     │
+│ updated_at   │        │ start_date       │        │ amenities    │
+└──────────────┘        │ end_date         │        │ photos       │
+                        │ occupants        │        │ is_available │
+  ?? = nullable;        │ purpose          │        │ created_at   │
+  renter_id OR          │ notes            │        │ updated_at   │
+  guest fields required │ status           │        └──────────────┘
+                        │ rejection_reason │
+                        │ created_at       │
+                        │ updated_at       │
                         └────────┬─────────┘
                                  │ 1
                                  │
@@ -132,13 +135,18 @@ CREATE TABLE units (
 
 ## 4. RentRequest
 
-Represents a renter's formal request to occupy a unit.
+Represents a renter's formal request to occupy a unit. The submitter may be an authenticated user or an unauthenticated guest — exactly one of (`renter_id`) or (`guest_name` + `guest_email`) must be populated.
 
 ```sql
 CREATE TABLE rent_requests (
     id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     unit_id          UUID         NOT NULL REFERENCES units(id),
-    renter_id        UUID         NOT NULL REFERENCES users(id),
+    -- Nullable: populated only when the request is submitted by a registered/logged-in user.
+    renter_id        UUID         REFERENCES users(id),
+    -- Guest contact fields: populated only when the submitter is not logged in.
+    guest_name       VARCHAR(255),
+    guest_email      VARCHAR(255),
+    guest_phone      VARCHAR(30),
     reviewed_by      UUID         REFERENCES users(id),
     start_date       DATE         NOT NULL,
     end_date         DATE         NOT NULL,
@@ -151,7 +159,12 @@ CREATE TABLE rent_requests (
     rejection_reason TEXT,
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT valid_dates CHECK (end_date > start_date)
+    CONSTRAINT valid_dates CHECK (end_date > start_date),
+    -- Either a linked user account OR guest contact details must be provided.
+    CONSTRAINT submitter_identity CHECK (
+        (renter_id IS NOT NULL)
+        OR (guest_name IS NOT NULL AND guest_email IS NOT NULL)
+    )
 );
 ```
 
@@ -161,7 +174,10 @@ CREATE TABLE rent_requests (
 |-------|------|-------------|
 | `id` | UUID | Unique identifier |
 | `unit_id` | UUID (FK) | The unit being requested |
-| `renter_id` | UUID (FK) | The user who submitted the request |
+| `renter_id` | UUID (FK) | The registered user who submitted the request; `NULL` for guest submissions |
+| `guest_name` | VARCHAR(255) | Full name of the guest submitter; `NULL` when `renter_id` is set |
+| `guest_email` | VARCHAR(255) | Email of the guest submitter (used for notifications); `NULL` when `renter_id` is set |
+| `guest_phone` | VARCHAR(30) | Optional phone number of the guest submitter |
 | `reviewed_by` | UUID (FK) | Admin who approved or rejected the request |
 | `start_date` | DATE | Desired rental start date |
 | `end_date` | DATE | Desired rental end date |
@@ -172,6 +188,8 @@ CREATE TABLE rent_requests (
 | `rejection_reason` | TEXT | Required when status is `rejected` |
 | `created_at` | TIMESTAMPTZ | Record creation timestamp |
 | `updated_at` | TIMESTAMPTZ | Last modification timestamp |
+
+> **Submitter identity rule:** `renter_id` and the guest fields are mutually exclusive. When a logged-in user submits the form, `renter_id` is set and guest fields are `NULL`. When a guest submits, `renter_id` is `NULL` and `guest_name` + `guest_email` are required.
 
 ### Status Lifecycle
 

@@ -263,9 +263,47 @@ GET /units/:id
 POST /rent-requests
 ```
 
-**Authorization:** Required (role: renter or admin)
+**Authorization:** Optional  
+The endpoint accepts three submission modes. The `Authorization` header is optional — if a valid JWT is provided, the server uses the token's identity and ignores any guest fields in the body.
 
-**Request Body**
+#### Mode A — Guest (no account, no login)
+
+```json
+{
+  "unitId": "uuid",
+  "startDate": "2026-05-01",
+  "endDate": "2026-05-15",
+  "occupants": 2,
+  "purpose": "residential",
+  "notes": "We are a couple looking for a quiet place.",
+  "guestName": "Jane Smith",
+  "guestEmail": "jane@example.com",
+  "guestPhone": "+62812345678"
+}
+```
+
+#### Mode B — Registering Guest (guest who opts to create an account)
+
+Includes all Mode A fields plus a `password` field. The system creates a new user account before saving the request.
+
+```json
+{
+  "unitId": "uuid",
+  "startDate": "2026-05-01",
+  "endDate": "2026-05-15",
+  "occupants": 2,
+  "purpose": "residential",
+  "notes": "We are a couple looking for a quiet place.",
+  "guestName": "Jane Smith",
+  "guestEmail": "jane@example.com",
+  "guestPhone": "+62812345678",
+  "password": "S3cur3P@ss!"
+}
+```
+
+#### Mode C — Logged-In User (JWT provided)
+
+The server auto-fills the submitter identity from the token. Guest fields in the body are ignored.
 
 ```json
 {
@@ -284,6 +322,9 @@ POST /rent-requests
 - `occupants` must not exceed the unit's `capacity`
 - Unit must be `isAvailable: true`
 - No overlapping approved requests exist for the unit and date range
+- (Mode A/B) `guestName` and `guestEmail` are required when no JWT is present
+- (Mode B) `password` must be at least 8 characters; `guestEmail` must not already belong to an existing account
+- (Mode C) JWT must be valid and not expired
 
 **Response `201 Created`**
 
@@ -293,7 +334,9 @@ POST /rent-requests
   "data": {
     "id": "uuid",
     "unitId": "uuid",
-    "renterId": "uuid",
+    "renterId": "uuid-or-null",
+    "guestName": "Jane Smith",
+    "guestEmail": "jane@example.com",
     "startDate": "2026-05-01",
     "endDate": "2026-05-15",
     "occupants": 2,
@@ -305,7 +348,12 @@ POST /rent-requests
 }
 ```
 
-**Errors:** `400`, `401`, `404`, `409 Conflict` (date overlap)
+> For Mode B, the response also includes a JWT so the newly created user is immediately logged in:
+> ```json
+> { "token": "eyJhbGci..." }
+> ```
+
+**Errors:** `400`, `404`, `409 Conflict` (date overlap), `422` (Mode B: email already registered)
 
 ---
 

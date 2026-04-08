@@ -27,7 +27,7 @@
 The system provides a streamlined workflow covering:
 
 - Unit catalog discovery (public/unauthenticated)
-- Rental request submission (authenticated guest)
+- Rental request submission (no registration required — guests, registering guests, and logged-in users all supported)
 - Request review and approval by administrators
 - Automated generation of a rental contract document
 
@@ -40,7 +40,9 @@ The system provides a streamlined workflow covering:
 | # | Goal |
 |---|------|
 | G1 | Allow any visitor (guest) to browse available rental units without authentication |
-| G2 | Allow registered guests to submit a rental request for a selected unit |
+| G2 | Allow any visitor (guest) to submit a rental request **without creating an account** |
+| G2a | Allow a guest to optionally create an account (with password) during the request submission, converting them to a registered renter |
+| G2b | Auto-fill the rental request form with saved profile data when the user is already logged in |
 | G3 | Provide administrators with tools to review, approve, or reject rental requests |
 | G4 | Automatically generate a legally-formatted rental contract upon approval |
 | G5 | Ensure the contract clearly states the responsibilities of the renter/lessee |
@@ -113,8 +115,9 @@ The system provides a streamlined workflow covering:
 
 | Role | Description | Permissions |
 |------|-------------|-------------|
-| **Guest (unauthenticated)** | Any visitor to the platform | Browse catalog |
-| **Registered User / Renter** | A guest who has created an account | Browse catalog, submit rental requests, view own requests and contracts |
+| **Guest (unauthenticated)** | Any visitor to the platform | Browse catalog; submit rental requests (as a guest without an account) |
+| **Registering Guest** | A guest who chooses to create an account during request submission | Same as Guest + account created automatically; becomes a Registered User |
+| **Registered User / Renter** | A user with a platform account | Browse catalog, submit rental requests (form auto-filled), view own requests and contracts |
 | **Admin** | Platform operator/manager | All renter permissions + review/approve/reject requests, generate contracts, manage units |
 
 ---
@@ -139,40 +142,63 @@ The system provides a streamlined workflow covering:
         └──── [Interested] ──────► [Proceed to Rental Request Flow]
 ```
 
-### 5.2 Rental Request Flow (Registered User)
+### 5.2 Rental Request Flow (Guest / Registering Guest / Logged-In User)
+
+All three submitter types land on the same rental request form. The form adapts based on login state.
 
 ```
 [User selects a unit to rent]
         │
         ▼
-[Authentication gate]
-  ├── [Not logged in] ──► [Login / Register] ──► [Return to unit]
-  └── [Logged in] ──────────────────────────────────────┐
-                                                        │
-                                                        ▼
-                                              [Fill Rental Request Form]
-                                                - Desired start date
-                                                - Desired end date
-                                                - Number of occupants
-                                                - Additional notes/requests
-                                                        │
-                                                        ▼
-                                              [Submit Request]
-                                                        │
-                                                        ▼
-                                              [System validates form]
-                                                        │
-                                          ┌─────────────┴──────────────┐
-                                          │                            │
-                                    [Validation fails]         [Validation passes]
-                                          │                            │
-                                    [Show errors]             [Request saved with
-                                          │                     status: PENDING]
-                                          │                            │
-                                    [User corrects]           [Email notification
-                                          │                    sent to admin]
-                                          │                            │
-                                          └───────────────────────────┘
+[System checks authentication state]
+        │
+        ├─── [Logged in] ──────────────────────────────────────────────────┐
+        │                                                                  │
+        │                                                    [Form auto-filled with profile]
+        │                                                      - Name, email, phone pre-filled
+        │                                                      - Identity section hidden
+        │                                                                  │
+        └─── [Not logged in] ──────────────────────────────────────────────┤
+                                                                           │
+                                                             [Form shows identity section]
+                                                               - Full Name (required)
+                                                               - Email (required)
+                                                               - Phone (optional)
+                                                               - [ ] Create an account?
+                                                                     └── [Yes] → Password field shown (required)
+                                                                         [No]  → Guest submission
+                                                                           │
+                                                                           ▼
+                                                             [User fills rental details]
+                                                               - Desired start date
+                                                               - Desired end date
+                                                               - Number of occupants
+                                                               - Purpose of rental
+                                                               - Additional notes/requests
+                                                                           │
+                                                                           ▼
+                                                             [Submit Request]
+                                                                           │
+                                                                           ▼
+                                                             [System validates form]
+                                                                           │
+                                               ┌───────────────────────────┴──────────────────────────┐
+                                               │                                                       │
+                                         [Validation fails]                                    [Validation passes]
+                                               │                                                       │
+                                         [Show errors]                                 ┌───────────────┴───────────────┐
+                                               │                                       │                               │
+                                         [User corrects]                    [Guest submission]             [Account creation chosen]
+                                                                                       │                               │
+                                                                           [Request saved,             [New user account created]
+                                                                            renter_id = NULL]          [Request saved,
+                                                                            guest fields set]           renter_id = new user ID]
+                                                                                       │                               │
+                                                                                       └───────────────┬───────────────┘
+                                                                                                       │
+                                                                                         [Status: PENDING]
+                                                                                         [Email notification sent
+                                                                                          to admin and submitter]
 ```
 
 ### 5.3 Admin Review Flow
@@ -235,7 +261,19 @@ The system provides a streamlined workflow covering:
 
 ### 6.2 Rental Request Form
 
-Fields collected from the renter:
+The form supports three submitter modes. Fields displayed adapt based on login state:
+
+#### Identity Section (hidden when logged in; auto-filled values used instead)
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| Full Name | String | Yes (guest only) | Auto-filled from profile when logged in |
+| Email | String | Yes (guest only) | Auto-filled from profile when logged in |
+| Phone | String | No | Auto-filled from profile when logged in |
+| Create an Account? | Checkbox | No | Opt-in; reveals the password field |
+| Password | String | Conditional | Required only when "Create an Account?" is checked; min 8 characters |
+
+#### Rental Details Section (always shown)
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
@@ -245,6 +283,14 @@ Fields collected from the renter:
 | Number of Occupants | Integer | Yes | Must not exceed unit capacity |
 | Purpose of Rental | Enum | No | Residential / Commercial / Short-stay |
 | Additional Notes | Text | No | Max 500 characters |
+
+#### Submission Modes Summary
+
+| Mode | Trigger | Outcome |
+|------|---------|---------|
+| **Guest** | Not logged in, "Create an account?" unchecked | Request saved with guest contact fields; no user account created |
+| **Registering Guest** | Not logged in, "Create an account?" checked + password provided | New user account created; request linked to new `renter_id` |
+| **Logged-In User** | Active session | Identity section hidden; profile data auto-fills; request linked to `renter_id` |
 
 ### 6.3 Request Approval Workflow
 
@@ -281,7 +327,7 @@ Every state change on a `RentRequest` or `Contract` is recorded with:
 |----------------|-------|--------|-------|
 | `GET /units` (catalog) | ✅ | ✅ | ✅ |
 | `GET /units/:id` | ✅ | ✅ | ✅ |
-| `POST /rent-requests` | ❌ | ✅ | ✅ |
+| `POST /rent-requests` | ✅ (as guest) | ✅ | ✅ |
 | `GET /rent-requests` (own) | ❌ | ✅ | ✅ |
 | `GET /rent-requests` (all) | ❌ | ❌ | ✅ |
 | `PUT /rent-requests/:id/approve` | ❌ | ❌ | ✅ |
@@ -312,9 +358,10 @@ All authenticated requests must include a valid JWT in the `Authorization: Beare
 | Term | Definition |
 |------|-----------|
 | **Unit** | A rentable property (apartment, house, room, commercial space, etc.) |
-| **Guest** | An unauthenticated visitor browsing the catalog |
-| **Renter / Lessee** | A registered user who has submitted or been approved for a rental |
+| **Guest** | An unauthenticated visitor; may browse the catalog and submit rental requests without an account |
+| **Registering Guest** | A guest who opts to create a password during request submission, becoming a Registered User upon form completion |
+| **Renter / Lessee** | A user (registered or guest) who has submitted or been approved for a rental |
 | **Lessor** | The property owner or the platform acting on behalf of the owner |
-| **RentRequest** | A formal request by a renter to occupy a unit for a specified period |
+| **RentRequest** | A formal request to occupy a unit for a specified period; may be submitted by a guest or a registered user |
 | **Contract** | The legally binding rental agreement generated after request approval |
 | **Admin** | A platform operator with authority to review requests and manage units |
