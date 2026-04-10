@@ -1,0 +1,6 @@
+# ignore any node_modules from sub project/service including `api/`, and `react/`
+**/dist/
+**/build/
+**/node_modules/
+**/.env**/.env.*
+**/generated/prisma/

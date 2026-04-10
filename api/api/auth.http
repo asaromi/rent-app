@@ -1,0 +1,7 @@
+### generate paseto keys
+POST https://osumorgwaigvbyggbujm.supabase.co/functions/v1/generate-paseto
+Authorization: Bearer sb_publishable_Q2DD56a2QicNATiE4Rl2kQ_XbSH1laq
+apiKey: sb_publishable_Q2DD56a2QicNATiE4Rl2kQ_XbSH1laq
+Content-Type: application/json
+
+###
